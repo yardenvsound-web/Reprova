@@ -44,22 +44,28 @@ class Queue:
         return job
 
     # -- progress ------------------------------------------------------------
-    def beat(self, run_id: str | None = None) -> bool:
+    def beat(self, run_id: str | None = None, output: dict | None = None) -> bool:
         now = iso(self.clock())
-        ok = self.db.update_heartbeat(self.runner_id, now)
+        ok = self.db.update_heartbeat(self.runner_id, now, output)
         if not ok:
             log.warning("heartbeat row for %s not found; run seed.sql", self.runner_id)
         if run_id:
             self.db.update_if_status(run_id, ["running", "cancel_requested"], {"heartbeat_at": now})
         return ok
 
+    def progress(self, run_id: str, fields: dict[str, Any]) -> bool:
+        """Partial results while the run is in flight (the UI polls them)."""
+        return self.db.update_if_status(run_id, ["running", "cancel_requested"],
+                                        {**fields, "heartbeat_at": iso(self.clock())})
+
     def cancel_requested(self, run_id: str) -> bool:
         return self.db.get_status(run_id) == "cancel_requested"
 
     # -- finishing -----------------------------------------------------------
-    def finish(self, run_id: str, *, summary: dict | None = None, results: list | None = None) -> bool:
+    def finish(self, run_id: str, *, summary: dict | None = None, results: list | None = None,
+               extra: dict[str, Any] | None = None) -> bool:
         fields: dict[str, Any] = {"status": "done", "finished_at": iso(self.clock()),
-                                  "summary": summary or dict(EMPTY_SUMMARY)}
+                                  "summary": summary or dict(EMPTY_SUMMARY), **(extra or {})}
         if results is not None:
             fields["results"] = results
         return self.db.update_if_status(run_id, ["running"], fields)
@@ -71,9 +77,10 @@ class Queue:
             {"status": "error", "error": error[:2000], "finished_at": iso(self.clock())},
         )
 
-    def mark_cancelled(self, run_id: str) -> bool:
+    def mark_cancelled(self, run_id: str, extra: dict[str, Any] | None = None) -> bool:
+        """Keeps whatever was completed (results/summary in `extra`)."""
         return self.db.update_if_status(
-            run_id, ["cancel_requested"], {"status": "cancelled", "finished_at": iso(self.clock())}
+            run_id, ["cancel_requested"], {"status": "cancelled", "finished_at": iso(self.clock()), **(extra or {})}
         )
 
     # -- recovery ------------------------------------------------------------

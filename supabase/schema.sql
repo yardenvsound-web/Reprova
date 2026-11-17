@@ -1,4 +1,4 @@
--- Reprova schema (Milestone 1)
+-- Reprova schema (Milestones 1 and 2)
 -- Run in the Supabase SQL editor, in this order: schema.sql, policies.sql, seed.sql
 -- Three tables only (course-stack rule). Lists that belong to a row live in jsonb columns.
 
@@ -34,7 +34,11 @@ create table if not exists public.projects (
   reports          jsonb not null default '[]'::jsonb,
   intake           jsonb not null default '[]'::jsonb,     -- F49: what we need from the client [{key, status, file_path, ...}]
   created_at       timestamptz not null default now(),
-  updated_at       timestamptz not null default now()
+  updated_at       timestamptz not null default now(),
+  -- F07: a Production target is never stored without an explicit approval tick
+  constraint projects_production_needs_approval check (
+    not jsonb_path_exists(targets, '$[*] ? (@.is_production == true && !(exists(@.production_approved ? (@ == true))))')
+  )
 );
 
 -- ---------------------------------------------------------------- runs (also the job queue)
@@ -49,7 +53,7 @@ create table if not exists public.runs (
   plan_version    int,
   build           jsonb not null default '{}'::jsonb,      -- {version, file_hash, commit}
   retest_of       uuid references public.runs(id) on delete set null,
-  payload         jsonb not null default '{}'::jsonb,      -- report_pdf: {report_version}
+  payload         jsonb not null default '{}'::jsonb,      -- test_run: {total}; report_pdf: {report_version}
   claimed_by      text,
   claimed_at      timestamptz,
   heartbeat_at    timestamptz,
@@ -58,7 +62,7 @@ create table if not exists public.runs (
   summary         jsonb not null default '{}'::jsonb,      -- {passed, failed, error, blocked, skipped, flaky}
   results         jsonb not null default '[]'::jsonb,      -- NormalizedTestResult[] (+ attempts[])
   evidence_paths  jsonb not null default '[]'::jsonb,
-  output          jsonb not null default '{}'::jsonb,      -- report_pdf: {pdf_path}
+  output          jsonb not null default '{}'::jsonb,      -- report_pdf: {pdf_path}; runner_heartbeat: {secret_refs, checked_at}
   error           text,
   ai_cost_usd     numeric(10, 4) not null default 0,
   created_at      timestamptz not null default now(),

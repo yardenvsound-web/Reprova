@@ -3,8 +3,10 @@
 Operator console and local runner for a managed QA service.
 Spec documents (PRD, ARCHITECTURE, DESIGN, MILESTONES) live outside this public repo.
 
-**Current state: Milestone 1, Walking Skeleton.** The browser, Supabase, the local runner
-and n8n are connected end to end. There are no product features yet.
+**Current state: Milestone 2, Web and API test plan end to end** (built, waiting for the operator's
+check). Project Setup with Intake and Readiness, the methodology catalog, Test Plan & Run, the full
+queue (cancel, timeout, time budget), Keychain credential refs, secret/PII redaction, the Web
+(Playwright) and API (Pytest + httpx) adapters, and the first Dashboard.
 
 > This repo is public. Never commit keys, passwords, client names, URLs or files.
 > Secrets live only in the macOS Keychain and in n8n Credentials.
@@ -12,10 +14,16 @@ and n8n are connected end to end. There are no product features yet.
 ## Layout
 
 ```
-index.html, login.html     GitHub Pages site (no build step)
+index.html                 Dashboard
+project.html               Projects list and Project Setup (Targets, Intake, Readiness)
+plan.html                  Test Plan & Run
+login.html                 sign in
 assets/  i18n/             CSS, JS modules, EN/HE strings
-supabase/                  schema.sql, policies.sql, seed.sql
+catalog/methodologies.json methodology catalog (F11)
+supabase/                  schema.sql, policies.sql, seed.sql, m2.sql (Milestone 2 migration)
 runner/                    Python runner (runs on the operator's Mac)
+fixtures/                  local demo targets with seeded defects, and the demo Test Plans
+tests/web/                 Node tests for Intake and Readiness
 n8n/                       exported workflows, without credentials
 ```
 
@@ -58,6 +66,53 @@ python -m reprova_runner check                # sign in, heartbeat, ping n8n
 python -m reprova_runner run                  # keep it running
 ```
 
+## Milestone 2 setup (once)
+1. **Supabase:** run `supabase/m2.sql` in the SQL editor. It adds the Production-approval check and
+   gives *Demo Booking Web* and *Demo Customer API* draft Test Plans (it resets them if run again).
+2. **Runner:**
+   ```bash
+   cd runner && source .venv/bin/activate
+   pip install -r requirements.txt && python -m playwright install chromium
+   ```
+3. **Demo credentials** (dummy values, any non-empty text). Copy each project's id from the address bar
+   of its Project Setup page (`project.html?id=…`):
+   ```bash
+   python -m reprova_runner set-secret <web_project_id>/demo_web_login
+   python -m reprova_runner set-secret <api_project_id>/demo_api_key
+   python -m reprova_runner check     # lists every credential ref as found or MISSING
+   ```
+   The runner reports which refs exist (names only) on its heartbeat every 30 s, and Readiness shows them.
+4. **Demo targets:** in a second terminal, `python fixtures/demo_targets.py` (Web on :8765, API on :8766).
+
+## Milestone 2 walkthrough
+1. Projects › *Demo Booking Web*: Readiness is **Not ready**. Upload a requirements document and a written
+   approval in Intake (any dummy PDF), mark the test link and test users Received, and Save.
+2. Go to Test Plan: approve the plan, then **Run**. Progress, events and results update every few seconds.
+3. Same for *Demo Customer API*. Together the two runs show all six states.
+
+| Case | Expected state | Why |
+|---|---|---|
+| WEB-01, API-01, API-03, API-04 | Passed | |
+| WEB-02, API-02 | Failed | seeded bug: 0 nights is accepted |
+| WEB-04 | Execution error | the step waits for an element that does not exist: a test-definition problem, not a product bug |
+| API-05 | Flaky | fails every other call; the runner re-runs a failed case `repro_attempts` times |
+| WEB-05, API-06 | Skipped | not selected in the plan |
+| any case, demo targets stopped | Blocked | the environment is down, which is not a failure |
+
+## Milestone 2 Definition of Done
+- [ ] Run cannot be pressed while Readiness is incomplete or the plan is not approved.
+- [ ] Without a requirements document and a written approval marked Received, Readiness shows Not ready.
+- [ ] Adding a White Box target adds a read-only repo request to Intake; Copy request copies only the missing items.
+- [ ] Deleting a `secret_ref` from the Keychain shows Not ready in the Keychain item (within ~30 s, with the runner online).
+- [ ] The Web run and the API run finish, and all six states show as word and icon.
+- [ ] A stopped demo environment returns `blocked`, not `failed`.
+- [ ] Cancel during a run keeps what was completed and marks the run `cancelled`.
+- [ ] A dummy password printed in a test log does not appear in the evidence in Storage (WEB-03 log shows `[REDACTED:demo_web_login]`).
+- [ ] A Production target is not saved without the approval tick (also refused by the database).
+
+Automated checks: `cd runner && pytest -q` (queue, executor, redaction, and both adapters against the
+demo targets) and `npm test` (Intake and Readiness).
+
 ## Milestone 1 Definition of Done
 - [ ] Sign-in as `operator` works; without a session `index.html` redirects to `login.html`.
 - [ ] Reading `projects` with the anon key and no session returns no data
@@ -70,5 +125,6 @@ python -m reprova_runner run                  # keep it running
 
 ## Tests
 ```bash
-cd runner && pytest -q
+cd runner && pytest -q     # runner (about 45 s: the adapter tests drive Chromium and pytest)
+npm test                   # console logic (Node 20+)
 ```

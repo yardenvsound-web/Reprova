@@ -1,50 +1,12 @@
 """Queue protocol tests with an in-memory fake database (no network)."""
 from __future__ import annotations
 
-import copy
 import threading
 from datetime import datetime, timedelta, timezone
 
+from fakes import FakeDB
 from reprova_runner.queue import Queue
 from reprova_runner.worker import handle
-
-
-class FakeDB:
-    """Mimics conditional updates atomically, like a single SQL UPDATE ... WHERE status IN (...)."""
-
-    def __init__(self, rows):
-        self.rows = {r["id"]: dict(r) for r in rows}
-        self.lock = threading.Lock()
-
-    def next_queued(self):
-        with self.lock:
-            q = [r for r in self.rows.values() if r["status"] == "queued" and r["kind"] != "runner_heartbeat"]
-            q.sort(key=lambda r: r["created_at"])
-            return copy.deepcopy(q[0]) if q else None
-
-    def update_if_status(self, run_id, expected, fields):
-        with self.lock:
-            r = self.rows.get(run_id)
-            if not r or r["status"] not in expected:
-                return False
-            r.update(fields)
-            return True
-
-    def stale_running(self, runner_id, older_than_iso):
-        return [dict(r) for r in self.rows.values()
-                if r["status"] == "running" and r.get("claimed_by") == runner_id
-                and r["kind"] != "runner_heartbeat" and (r.get("heartbeat_at") or "") < older_than_iso]
-
-    def update_heartbeat(self, runner_id, at_iso):
-        with self.lock:
-            for r in self.rows.values():
-                if r["kind"] == "runner_heartbeat" and r.get("claimed_by") == runner_id:
-                    r["heartbeat_at"] = at_iso
-                    return True
-            return False
-
-    def get_status(self, run_id):
-        return self.rows[run_id]["status"] if run_id in self.rows else None
 
 
 T0 = datetime(2026, 10, 20, 9, 0, tzinfo=timezone.utc)

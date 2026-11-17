@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Reprova · Project Setup</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/css/app.css">
+</head>
+<body>
+  <header class="top">
+    <div class="logo" data-i18n="app.name">Reprova</div>
+    <nav class="nav" aria-label="Main">
+      <a href="index.html" data-i18n="nav.dashboard">Dashboard</a>
+      <a href="project.html" aria-current="page" data-i18n="nav.projects">Projects</a>
+      <a aria-disabled="true" data-i18n="nav.findings">Findings</a>
+      <a aria-disabled="true" data-i18n="nav.reports">Reports</a>
+    </nav>
+    <div class="spacer"></div>
+    <span id="runner-status" class="pill idle" aria-live="polite"><span class="dot"></span><span data-i18n="runner.unknown">Runner not set up</span></span>
+    <div class="lang" role="group" aria-label="Language">
+      <button type="button" data-lang-option="en" data-i18n="lang.en">EN</button>
+      <button type="button" data-lang-option="he" data-i18n="lang.he">עב</button>
+    </div>
+    <button class="btn btn-ghost" id="signout" type="button" data-i18n="nav.signout">Sign out</button>
+  </header>
+
+  <!-- Projects list (no ?id) -->
+  <main id="list-view" hidden>
+    <div class="page-head">
+      <h1 data-i18n="projects.title">Projects</h1>
+      <div class="actions"><a class="btn btn-primary" href="project.html?new=1" data-i18n="dash.newProject">+ New Project</a></div>
+    </div>
+    <section class="box table-wrap">
+      <table>
+        <thead><tr>
+          <th data-i18n="col.project">Project</th><th data-i18n="col.client">Client</th><th data-i18n="col.type">Type</th>
+          <th data-i18n="col.status">Status</th><th data-i18n="col.updated">Updated</th>
+        </tr></thead>
+        <tbody id="projects-body"></tbody>
+      </table>
+      <p class="muted" id="projects-empty" hidden data-i18n="projects.empty">No projects yet.</p>
+    </section>
+  </main>
+
+  <!-- Project Setup (?id=… or ?new=1) -->
+  <main id="setup-view" hidden>
+    <nav class="crumbs" aria-label="Breadcrumb"><a href="project.html" data-i18n="nav.projects">Projects</a> / <span id="crumb-name"></span> / <span data-i18n="setup.title">Project Setup</span></nav>
+    <div class="page-head">
+      <h1 data-i18n="setup.title">Project Setup</h1>
+      <span id="status-tag" class="tag"></span>
+      <div class="actions">
+        <a class="btn btn-ghost" href="project.html" data-i18n="common.cancel">Cancel</a>
+        <button class="btn btn-primary" id="save" type="button" data-i18n="setup.save">Save project</button>
+      </div>
+    </div>
+    <p class="form-error" id="save-error" role="alert"></p>
+
+    <div class="split">
+      <div class="stack">
+        <div class="grid cols-2">
+          <section class="box">
+            <h2 data-i18n="sec.client">Client &amp; product</h2>
+            <div class="form-grid">
+              <div class="field"><label for="f-client" data-i18n="f.client">Client name</label><input id="f-client" autocomplete="off"></div>
+              <div class="field"><label for="f-name" data-i18n="f.product">Product</label><input id="f-name" autocomplete="off"></div>
+              <div class="field"><label for="f-type" data-i18n="f.productType">Product type</label>
+                <select id="f-type">
+                  <option value="web" data-i18n="ptype.web">Web</option>
+                  <option value="api" data-i18n="ptype.api">API</option>
+                  <option value="desktop_plugin" data-i18n="ptype.desktop_plugin">Desktop / Plugin</option>
+                  <option value="ai_agent" data-i18n="ptype.ai_agent">AI agent</option>
+                  <option value="workflow" data-i18n="ptype.workflow">Workflow</option>
+                </select></div>
+              <div class="field"><label for="f-status" data-i18n="f.status">Project status</label>
+                <select id="f-status">
+                  <option value="setup" data-i18n="pstatus.setup">Setup</option>
+                  <option value="active" data-i18n="pstatus.active">Active</option>
+                  <option value="on_hold" data-i18n="pstatus.on_hold">On hold</option>
+                  <option value="closed" data-i18n="pstatus.closed">Closed</option>
+                </select></div>
+              <div class="field wide"><span class="lbl" style="font-size:12px;font-weight:600" data-i18n="f.parts">Parts to test</span>
+                <div class="chips" id="parts" role="group"></div></div>
+            </div>
+          </section>
+
+          <section class="box">
+            <h2 data-i18n="sec.settings">Settings</h2>
+            <div class="form-grid">
+              <div class="field"><label for="f-lang" data-i18n="f.reportLanguage">Report language</label>
+                <select id="f-lang"><option value="en" data-i18n="lang.name.en">English</option><option value="he" data-i18n="lang.name.he">Hebrew</option></select></div>
+              <div class="field"><label class="check" style="margin-top:22px"><input type="checkbox" id="f-ai"> <span data-i18n="f.ai">AI analysis</span></label>
+                <span class="hint" data-i18n="f.aiNote"></span></div>
+              <div class="field"><label for="f-minutes" data-i18n="f.maxMinutes">Max minutes</label><input id="f-minutes" type="number" min="1" step="1"></div>
+              <div class="field"><label for="f-ai-usd" data-i18n="f.maxAi">Max AI $</label><input id="f-ai-usd" type="number" min="0" step="0.1"></div>
+              <div class="field"><label for="f-repro" data-i18n="f.repro">Repro attempts</label><input id="f-repro" type="number" min="0" max="10" step="1"></div>
+              <div class="field"><label for="f-retention" data-i18n="f.retention">Evidence retention (days)</label><input id="f-retention" type="number" min="1" step="1"></div>
+            </div>
+          </section>
+        </div>
+
+        <section class="box">
+          <div class="row" style="justify-content:space-between"><h2 data-i18n="sec.targets">Targets</h2>
+            <button class="btn btn-secondary btn-sm" type="button" id="add-target" data-i18n="target.add">+ Add target</button></div>
+          <div class="table-wrap"><table>
+            <thead><tr>
+              <th data-i18n="col.targetId">ID</th><th data-i18n="col.targetKind">Kind</th><th data-i18n="col.access">Access</th>
+              <th data-i18n="col.location">Location</th><th data-i18n="col.environment">Environment</th>
+              <th data-i18n="col.production">Production</th><th data-i18n="col.refs">Credential refs</th><th></th>
+            </tr></thead>
+            <tbody id="targets-body"></tbody>
+          </table></div>
+        </section>
+
+        <section class="box">
+          <h2 data-i18n="sec.testset">Test set · from catalog</h2>
+          <p class="muted" id="testset-hint" style="margin:0 0 10px"></p>
+          <div class="chips" id="testset" role="group"></div>
+        </section>
+
+        <section class="box">
+          <div class="row" style="justify-content:space-between"><h2 data-i18n="sec.intake">Intake</h2>
+            <button class="btn btn-secondary btn-sm" type="button" id="copy-request" data-i18n="intake.copy">Copy request</button></div>
+          <div class="table-wrap"><table><tbody id="intake-body"></tbody></table></div>
+          <p class="muted" id="intake-note" style="margin:8px 0 0"></p>
+        </section>
+      </div>
+
+      <aside class="box stack" aria-labelledby="ready-h">
+        <h2 id="ready-h" data-i18n="sec.readiness">Readiness checklist</h2>
+        <div class="row"><div class="ring" id="ready-ring"><span id="ready-count"></span></div><span id="ready-pill"></span></div>
+        <ul class="checklist" id="ready-list"></ul>
+        <p class="muted" style="margin:0;font-size:12px" data-i18n="ready.note">Run is enabled only when every item is checked.</p>
+        <a class="btn btn-secondary btn-sm" id="go-plan" href="#" data-i18n="ready.goPlan" style="align-self:flex-start">Go to Test Plan →</a>
+      </aside>
+    </div>
+  </main>
+
+  <dialog id="target-dialog" aria-labelledby="target-dialog-h">
+    <form method="dialog" id="target-form" novalidate>
+      <h2 id="target-dialog-h" data-i18n="target.title">Target</h2>
+      <div class="form-grid">
+        <div class="field"><label for="t-id" data-i18n="f.targetId">Target ID</label><input id="t-id" required></div>
+        <div class="field"><label for="t-kind" data-i18n="col.targetKind">Kind</label>
+          <select id="t-kind"><option value="web" data-i18n="tkind.web">Web</option><option value="api" data-i18n="tkind.api">API</option>
+            <option value="installer" data-i18n="tkind.installer">Installer</option><option value="repository" data-i18n="tkind.repository">Repository</option></select></div>
+        <div class="field"><label for="t-access" data-i18n="col.access">Access</label>
+          <select id="t-access"><option value="black_box" data-i18n="access.black_box">Black Box</option><option value="white_box" data-i18n="access.white_box">White Box</option></select></div>
+        <div class="field"><label for="t-env" data-i18n="f.environment">Environment</label><input id="t-env" placeholder="staging"></div>
+        <div class="field wide"><label for="t-location" data-i18n="f.location">Location</label><input id="t-location" dir="ltr" required></div>
+        <div class="field wide"><label for="t-refs" data-i18n="f.refs">Credential refs</label><input id="t-refs" dir="ltr">
+          <span class="hint mono" id="t-refs-hint"></span></div>
+        <label class="check wide"><input type="checkbox" id="t-prod"> <span data-i18n="f.isProduction">This is a Production target</span></label>
+        <label class="check wide"><input type="checkbox" id="t-prod-ok"> <span data-i18n="f.prodApproved">I have explicit written approval</span></label>
+      </div>
+      <p class="form-error" id="target-error" role="alert"></p>
+      <div class="foot">
+        <button class="btn btn-danger btn-sm" type="button" id="t-delete" data-i18n="common.delete">Delete</button>
+        <span class="spacer"></span>
+        <button class="btn btn-ghost btn-sm" type="button" id="t-cancel" data-i18n="common.cancel">Cancel</button>
+        <button class="btn btn-primary btn-sm" type="submit" id="t-save" data-i18n="common.save">Save</button>
+      </div>
+    </form>
+  </dialog>
+
+  <script type="module" src="assets/js/project.js"></script>
+</body>
+</html>

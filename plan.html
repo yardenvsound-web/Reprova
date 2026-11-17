@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Reprova · Test Plan &amp; Run</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/css/app.css">
+</head>
+<body>
+  <header class="top">
+    <div class="logo" data-i18n="app.name">Reprova</div>
+    <nav class="nav" aria-label="Main">
+      <a href="index.html" data-i18n="nav.dashboard">Dashboard</a>
+      <a href="project.html" aria-current="page" data-i18n="nav.projects">Projects</a>
+      <a aria-disabled="true" data-i18n="nav.findings">Findings</a>
+      <a aria-disabled="true" data-i18n="nav.reports">Reports</a>
+    </nav>
+    <div class="spacer"></div>
+    <span id="runner-status" class="pill idle" aria-live="polite"><span class="dot"></span><span data-i18n="runner.unknown">Runner not set up</span></span>
+    <div class="lang" role="group" aria-label="Language">
+      <button type="button" data-lang-option="en" data-i18n="lang.en">EN</button>
+      <button type="button" data-lang-option="he" data-i18n="lang.he">עב</button>
+    </div>
+    <button class="btn btn-ghost" id="signout" type="button" data-i18n="nav.signout">Sign out</button>
+  </header>
+
+  <main>
+    <nav class="crumbs" aria-label="Breadcrumb"><a href="project.html" data-i18n="nav.projects">Projects</a> / <a id="crumb-project" href="#"></a> / <span data-i18n="plan.title">Test Plan &amp; Run</span></nav>
+    <div class="page-head">
+      <h1 data-i18n="plan.title">Test Plan &amp; Run</h1>
+      <span class="tag" id="plan-tag"></span>
+      <div class="actions">
+        <button class="btn btn-secondary" type="button" id="add-case" data-i18n="plan.addCase">+ Add test case</button>
+        <button class="btn btn-primary" type="button" id="approve" data-i18n="plan.approve">Approve plan</button>
+      </div>
+    </div>
+    <p class="form-error" id="page-error" role="alert"></p>
+
+    <div class="split">
+      <section class="box">
+        <h2 data-i18n="plan.cases">Test cases</h2>
+        <p class="muted" id="draft-note" hidden style="margin:0 0 10px"></p>
+        <div class="table-wrap"><table>
+          <thead><tr>
+            <th data-i18n="col.select">Run</th><th data-i18n="col.id">ID</th><th data-i18n="col.title">Title</th>
+            <th data-i18n="col.target">Target</th><th data-i18n="col.method">Methodology</th>
+            <th data-i18n="col.priority">Priority</th><th data-i18n="col.adapter">Adapter</th><th></th>
+          </tr></thead>
+          <tbody id="cases-body"></tbody>
+        </table></div>
+        <p class="muted" id="cases-summary" style="margin:10px 0 0;font-size:12px"></p>
+      </section>
+
+      <div class="stack">
+        <section class="box stack" aria-labelledby="run-h">
+          <h2 id="run-h" data-i18n="run.title">Run</h2>
+          <div><div style="font-size:12px;font-weight:600" data-i18n="run.target">Targets in this plan</div>
+            <div class="mono" id="run-targets" style="margin-top:4px"></div></div>
+          <div class="row">
+            <button class="btn btn-primary" type="button" id="run" data-i18n="run.run">Run</button>
+            <button class="btn btn-secondary" type="button" id="cancel" data-i18n="run.cancel">Cancel run</button>
+          </div>
+          <ul class="checklist" id="run-why"></ul>
+        </section>
+
+        <section class="box stack" aria-labelledby="prog-h" aria-live="polite">
+          <div class="row" style="justify-content:space-between"><h2 id="prog-h" data-i18n="prog.title" style="margin:0">Progress</h2><span id="prog-pill"></span></div>
+          <div class="bar" role="progressbar" aria-labelledby="prog-h" id="prog-bar" aria-valuemin="0"><span id="prog-fill" style="width:0%"></span></div>
+          <div class="chips" id="prog-counts"></div>
+          <p class="muted" id="prog-note" style="margin:0;font-size:12.5px"></p>
+          <div><div style="font-size:12px;font-weight:600;margin-bottom:6px" data-i18n="prog.events">Events</div>
+            <div class="events" id="events"></div></div>
+        </section>
+      </div>
+    </div>
+
+    <section class="box">
+      <h2 data-i18n="prog.results">Results</h2>
+      <div class="table-wrap"><table>
+        <thead><tr>
+          <th data-i18n="col.id">ID</th><th data-i18n="col.title">Title</th><th data-i18n="col.state">State</th>
+          <th data-i18n="col.actual">Actual</th><th data-i18n="col.attempts">Attempts</th><th data-i18n="col.evidence">Evidence</th>
+        </tr></thead>
+        <tbody id="results-body"></tbody>
+      </table></div>
+      <p class="muted" id="results-empty" data-i18n="prog.none">No run yet for this project.</p>
+    </section>
+
+    <section class="box">
+      <h2 data-i18n="prog.history">Run history</h2>
+      <div class="table-wrap"><table>
+        <thead><tr><th data-i18n="col.started">Started</th><th data-i18n="col.status">Status</th><th>Plan</th>
+          <th class="num" data-i18n="col.pass">Pass</th><th class="num" data-i18n="col.fail">Fail</th>
+          <th class="num" data-i18n="col.error">Error</th><th class="num" data-i18n="col.flaky">Flaky</th></tr></thead>
+        <tbody id="history-body"></tbody>
+      </table></div>
+    </section>
+  </main>
+
+  <dialog id="case-dialog" aria-labelledby="case-dialog-h">
+    <form id="case-form" novalidate>
+      <h2 id="case-dialog-h" data-i18n="case.title">Test case</h2>
+      <div class="form-grid">
+        <div class="field"><label for="c-id" data-i18n="f.caseId">ID</label><input id="c-id" dir="ltr" required></div>
+        <div class="field"><label for="c-target" data-i18n="col.target">Target</label><select id="c-target"></select></div>
+        <div class="field wide"><label for="c-title" data-i18n="f.caseTitle">Title</label><input id="c-title" required></div>
+        <div class="field"><label for="c-method" data-i18n="f.method">Methodology</label><select id="c-method"></select></div>
+        <div class="field"><label for="c-priority" data-i18n="col.priority">Priority</label>
+          <select id="c-priority"><option value="critical" data-i18n="prio.critical">Critical</option><option value="high" data-i18n="prio.high">High</option>
+            <option value="medium" data-i18n="prio.medium">Medium</option><option value="low" data-i18n="prio.low">Low</option></select></div>
+        <div class="field wide"><label for="c-req" data-i18n="f.requirement">Requirement</label><input id="c-req"></div>
+        <div class="field"><label for="c-pre" data-i18n="f.preconditions">Preconditions</label><input id="c-pre"></div>
+        <div class="field"><label for="c-expected" data-i18n="f.expected">Expected</label><input id="c-expected"></div>
+        <div class="field wide"><label for="c-steps" data-i18n="f.steps">Steps (JSON)</label><textarea id="c-steps" spellcheck="false"></textarea>
+          <span class="hint mono" id="c-steps-hint"></span></div>
+        <label class="check wide"><input type="checkbox" id="c-selected"> <span data-i18n="col.select">Run</span></label>
+      </div>
+      <p class="form-error" id="case-error" role="alert"></p>
+      <div class="foot">
+        <button class="btn btn-danger btn-sm" type="button" id="c-delete" data-i18n="common.delete">Delete</button>
+        <span class="spacer"></span>
+        <button class="btn btn-ghost btn-sm" type="button" id="c-cancel" data-i18n="common.cancel">Cancel</button>
+        <button class="btn btn-primary btn-sm" type="submit" data-i18n="common.save">Save</button>
+      </div>
+    </form>
+  </dialog>
+
+  <script type="module" src="assets/js/plan.js"></script>
+</body>
+</html>

@@ -20,9 +20,15 @@ If code and spec disagree, stop and ask. Never invent a requirement that is not 
 ## Status
 - Milestone 1 (Walking Skeleton): **done** on 17.11.2026, all Definition of Done checks passed. Login, Dashboard,
   Supabase schema/RLS/seed, runner queue + heartbeat, n8n triage webhook all verified end to end.
-- Next: **Milestone 2**, Web and API test plan end to end (F07, F49 Intake, F11, F08, F03, F04,
-  F05, F15, F16, F06). See `../Reprova/MILESTONES.md`. The PoC adapters to reuse are in
-  `../Reprova/Extras/QA_Suite_COMPLETE_STARTER_v0.1/qa_suite_poc/`.
+- Milestone 2 (Web and API test plan end to end): **built 17.11.2026, waiting for the operator's
+  check and approval.** Steps and the DoD checklist are in `README.md`.
+- Decisions taken with the operator for Milestone 2 (not spelled out in the spec):
+  1. The runner reports which client `secret_refs` exist in the Keychain (names only) on its
+     heartbeat row, in `runs.output`; Readiness reads it. Runner offline means "not checked".
+  2. A minimal re-run of failed cases (`budget.repro_attempts`) decides Flaky now. AI triage,
+     fingerprints and findings stay in Milestone 4.
+  3. Test case steps are edited by the operator in plan.html (PoC step format). Demo plans: `fixtures/demo_plans.json`.
+  4. SQL changes are files the operator runs by hand (`supabase/m2.sql`).
 
 ## Rules
 - **Stop at the end of every Milestone** and wait for the operator's explicit approval.

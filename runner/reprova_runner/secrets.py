@@ -3,7 +3,7 @@
 Service name: "reprova". Accounts:
   runner-password            password of the Supabase "runner" user
   webhook-secret             value sent as X-QA-Secret to n8n
-  <project>/<ref>            client credentials (from Milestone 2)
+  <project_id>/<ref>         client credentials (F04); Supabase stores only the ref name
 
 Values are never written to files, logs or Supabase.
 """
@@ -30,6 +30,27 @@ def get(account: str) -> str:
 
 def has(account: str) -> bool:
     return bool(keyring.get_password(SERVICE, account))
+
+
+def client_account(project_id: str, ref: str) -> str:
+    return f"{project_id}/{ref}"
+
+
+def get_client(project_id: str, ref: str) -> str | None:
+    """A client credential for one run, or None when it is missing. Never logged."""
+    return keyring.get_password(SERVICE, client_account(project_id, ref)) or None
+
+
+def presence(projects: list[dict]) -> dict[str, bool]:
+    """Which secret_refs of each project's targets exist in the Keychain: names only, never values.
+    Reported on the heartbeat row so Readiness can show what is missing (decided for Milestone 2)."""
+    found: dict[str, bool] = {}
+    for p in projects:
+        for t in p.get("targets") or []:
+            for ref in t.get("secret_refs") or []:
+                account = client_account(p["id"], ref)
+                found[account] = has(account)
+    return found
 
 
 def set_interactive(account: str) -> None:
