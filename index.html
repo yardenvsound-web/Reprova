@@ -13,7 +13,7 @@
     <div class="logo" data-i18n="app.name">Reprova</div>
     <nav class="nav" aria-label="Main">
       <a href="index.html" aria-current="page" data-i18n="nav.dashboard">Dashboard</a>
-      <a aria-disabled="true" data-i18n="nav.projects">Projects</a>
+      <a href="project.html" data-i18n="nav.projects">Projects</a>
       <a aria-disabled="true" data-i18n="nav.findings">Findings</a>
       <a aria-disabled="true" data-i18n="nav.reports">Reports</a>
     </nav>
@@ -27,23 +27,39 @@
   </header>
 
   <main>
-    <section class="hero">
-      <h1 data-i18n="dash.title">Dashboard</h1>
-      <p data-i18n="dash.skeleton"></p>
-      <p class="mono" id="last-seen" style="margin-top:8px"></p>
+    <section class="hero row" style="justify-content:space-between">
+      <div>
+        <h1 data-i18n="dash.greeting">Welcome back</h1>
+        <p id="dash-summary"></p>
+        <p class="mono" id="last-seen" style="margin-top:6px"></p>
+      </div>
+      <a class="btn btn-primary" href="project.html?new=1" data-i18n="dash.newProject">+ New Project</a>
+    </section>
+
+    <section class="grid cols-3" aria-label="Totals">
+      <div class="box kpi"><div class="num" id="kpi-clients">–</div><div class="lbl" data-i18n="kpi.clients">Clients</div><div class="sub" data-i18n="kpi.clientsSub">Demo data</div></div>
+      <div class="box kpi"><div class="num" id="kpi-active">–</div><div class="lbl" data-i18n="kpi.active">Active projects</div><div class="sub" id="kpi-active-sub"></div></div>
+      <div class="box kpi"><div class="num" id="kpi-runs">–</div><div class="lbl" data-i18n="kpi.runs">Runs · last 30 days</div><div class="sub" id="kpi-runs-sub"></div></div>
     </section>
 
     <section class="box">
       <h2 data-i18n="dash.recent">Recent runs</h2>
-      <table>
-        <thead><tr>
-          <th data-i18n="col.project">Project</th>
-          <th data-i18n="col.kind">Kind</th>
-          <th data-i18n="col.status">Status</th>
-          <th data-i18n="col.created">Created</th>
-        </tr></thead>
-        <tbody id="runs-body"></tbody>
-      </table>
+      <div class="table-wrap">
+        <table>
+          <thead><tr>
+            <th data-i18n="col.project">Project</th>
+            <th data-i18n="col.type">Type</th>
+            <th data-i18n="col.kind">Kind</th>
+            <th data-i18n="col.status">Status</th>
+            <th class="num" data-i18n="col.pass">Pass</th>
+            <th class="num" data-i18n="col.fail">Fail</th>
+            <th class="num" data-i18n="col.error">Error</th>
+            <th class="num" data-i18n="col.flaky">Flaky</th>
+            <th data-i18n="col.started">Started</th>
+          </tr></thead>
+          <tbody id="runs-body"></tbody>
+        </table>
+      </div>
       <p class="muted" id="runs-empty" hidden data-i18n="dash.empty">No runs yet.</p>
     </section>
   </main>

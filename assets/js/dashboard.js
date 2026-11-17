@@ -1,85 +1,68 @@
-import { supabase } from './supabase.js';
-import { requireOperator, signOut } from './auth.js';
-import { initI18n, t, currentLang } from './i18n.js';
-import { RUNNER_STALE_SECONDS, REFRESH_SECONDS } from './config.js';
+// F06 Dashboard, first version: Clients, Active projects and Runs cards, Recent runs, runner status.
+import { supabase, boot, loadRunner, pill, el, fmtTime, t } from './ui.js';
+import { REFRESH_SECONDS } from './config.js';
 
-const STATUS_CLASS = {
-  queued: 'idle', running: 'info', cancel_requested: 'idle',
-  done: 'ok', error: 'err', cancelled: 'idle',
-};
-
-function fmtTime(iso) {
-  if (!iso) return '–';
-  return new Date(iso).toLocaleString(currentLang() === 'he' ? 'he-IL' : 'en-GB', {
-    dateStyle: 'short', timeStyle: 'medium',
-  });
-}
-
-function pill(cls, text) {
-  const span = document.createElement('span');
-  span.className = `pill ${cls}`;
-  const dot = document.createElement('span');
-  dot.className = 'dot';
-  const label = document.createElement('span');
-  label.textContent = text;
-  span.append(dot, label);
-  return span;
-}
-
-// Runner is online when its heartbeat row was updated within RUNNER_STALE_SECONDS.
-export function runnerState(heartbeatIso, now = Date.now()) {
-  if (!heartbeatIso) return 'unknown';
-  const age = (now - new Date(heartbeatIso).getTime()) / 1000;
-  return age <= RUNNER_STALE_SECONDS ? 'online' : 'offline';
-}
-
-async function loadRunner() {
-  const el = document.getElementById('runner-status');
-  const seen = document.getElementById('last-seen');
-  const { data, error } = await supabase
-    .from('runs').select('heartbeat_at, claimed_by')
-    .eq('kind', 'runner_heartbeat')
-    .order('heartbeat_at', { ascending: false, nullsFirst: false })
-    .limit(1);
-  const hb = !error && data && data[0] ? data[0].heartbeat_at : null;
-  const state = runnerState(hb);
-  const map = { online: ['ok', 'runner.online'], offline: ['bad', 'runner.offline'], unknown: ['idle', 'runner.unknown'] };
-  const [cls, key] = map[state];
-  el.replaceWith(Object.assign(pill(cls, t(key)), { id: 'runner-status' }));
-  document.getElementById('runner-status').setAttribute('aria-live', 'polite');
-  seen.textContent = hb ? t('dash.lastSeen', { when: fmtTime(hb) }) : '';
+async function loadCards() {
+  const since = new Date(Date.now() - 30 * 24 * 3600 * 1000).toISOString();
+  const [projects, runs] = await Promise.all([
+    supabase.from('projects').select('id, status, client'),
+    supabase.from('runs').select('id, status').neq('kind', 'runner_heartbeat').gte('created_at', since),
+  ]);
+  const ps = projects.data || [];
+  const rs = runs.data || [];
+  const clients = new Set(ps.map((p) => p.client?.name).filter(Boolean));
+  const active = ps.filter((p) => p.status === 'active').length;
+  const setup = ps.filter((p) => p.status === 'setup').length;
+  const running = rs.filter((r) => r.status === 'running' || r.status === 'cancel_requested').length;
+  const queued = rs.filter((r) => r.status === 'queued').length;
+  document.getElementById('kpi-clients').textContent = clients.size;
+  document.getElementById('kpi-active').textContent = active;
+  document.getElementById('kpi-active-sub').textContent = t('kpi.activeSub', { n: setup });
+  document.getElementById('kpi-runs').textContent = rs.length;
+  document.getElementById('kpi-runs-sub').textContent = t('kpi.runsSub', { running, queued });
+  document.getElementById('dash-summary').textContent = t('dash.summary', { active, queue: running + queued, setup });
 }
 
 async function loadRuns() {
   const body = document.getElementById('runs-body');
   const empty = document.getElementById('runs-empty');
   const { data, error } = await supabase
-    .from('runs').select('id, kind, status, created_at, projects(name)')
+    .from('runs').select('id, kind, status, summary, created_at, started_at, project_id, projects(name, product_type)')
     .neq('kind', 'runner_heartbeat')
     .order('created_at', { ascending: false })
     .limit(10);
-  body.replaceChildren();
   const rows = error ? [] : data;
+  body.replaceChildren();
   empty.hidden = rows.length > 0;
   for (const r of rows) {
-    const tr = document.createElement('tr');
-    const tdP = document.createElement('td'); tdP.textContent = r.projects?.name ?? '–';
-    const tdK = document.createElement('td'); tdK.className = 'mono'; tdK.textContent = r.kind;
-    const tdS = document.createElement('td'); tdS.append(pill(STATUS_CLASS[r.status] || 'idle', t(`status.${r.status}`)));
-    const tdC = document.createElement('td'); tdC.className = 'muted'; tdC.textContent = fmtTime(r.created_at);
-    tr.append(tdP, tdK, tdS, tdC);
+    const s = r.summary || {};
+    const n = (k) => (r.status === 'queued' ? '–' : String(s[k] ?? 0));
+    const tr = el('tr', { class: 'click', tabindex: '0', title: r.projects?.name || '' },
+      el('td', { style: 'font-weight:600' }, r.projects?.name ?? '–'),
+      el('td', { class: 'muted' }, r.projects ? t(`ptype.${r.projects.product_type}`) : '–'),
+      el('td', { class: 'mono' }, r.kind),
+      el('td', {}, pill(r.status)),
+      el('td', { class: 'num' }, n('passed')),
+      el('td', { class: 'num' }, n('failed')),
+      el('td', { class: 'num' }, n('error')),
+      el('td', { class: 'num' }, n('flaky')),
+      el('td', { class: 'muted' }, fmtTime(r.started_at || r.created_at)));
+    // A run row opens the project's Test Plan & Run screen.
+    const open = () => { window.location.href = `plan.html?id=${r.project_id}&run=${r.id}`; };
+    tr.addEventListener('click', open);
+    tr.addEventListener('keydown', (e) => { if (e.key === 'Enter') open(); });
     body.append(tr);
   }
 }
 
 async function refresh() {
-  await Promise.all([loadRunner(), loadRuns()]);
+  const runner = await loadRunner();
+  document.getElementById('last-seen').textContent =
+    runner.heartbeat_at ? t('dash.lastSeen', { when: fmtTime(runner.heartbeat_at, { dateStyle: 'short', timeStyle: 'medium' }) }) : '';
+  await Promise.all([loadCards(), loadRuns()]);
 }
 
-const session = await requireOperator();
-if (session) {
-  await initI18n();
-  document.getElementById('signout').addEventListener('click', signOut);
+if (await boot()) {
   document.addEventListener('langchange', refresh);
   await refresh();
   setInterval(refresh, REFRESH_SECONDS * 1000);

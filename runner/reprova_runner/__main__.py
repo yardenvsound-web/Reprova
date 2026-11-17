@@ -1,7 +1,8 @@
 """Reprova runner.
 
   python -m reprova_runner init-config        write an example runner.json (no secrets)
-  python -m reprova_runner set-secret NAME    store a secret in the Keychain (runner-password, webhook-secret)
+  python -m reprova_runner set-secret NAME    store a secret in the Keychain (runner-password, webhook-secret,
+                                              or a client credential <project_id>/<ref>)
   python -m reprova_runner check              sign in, write one heartbeat, ping n8n
   python -m reprova_runner once               process at most one queued job
   python -m reprova_runner run                poll the queue until Ctrl+C
@@ -15,6 +16,7 @@ import time
 
 from . import config as cfgmod
 from . import secrets
+from .db import Database
 from .db import SupabaseDatabase
 from .queue import Queue
 from .triage_client import TriageClient
@@ -37,9 +39,14 @@ def connect(cfg: cfgmod.Config):
 
 def cmd_check(cfg: cfgmod.Config) -> int:
     client = connect(cfg)
-    q = Queue(SupabaseDatabase(client), cfg.runner_id)
+    db = SupabaseDatabase(client)
+    q = Queue(db, cfg.runner_id)
     print("Supabase: signed in as runner")
-    print("Heartbeat:", "ok" if q.beat() else "row missing (run supabase/seed.sql)")
+    report = secret_report(db)
+    print("Heartbeat:", "ok" if q.beat(output=report) else "row missing (run supabase/seed.sql)")
+    if report:
+        for account, ok in sorted(report["secret_refs"].items()):
+            print(f"  Keychain {account}: {'found' if ok else 'MISSING'}")
     try:
         reply = TriageClient(cfg.n8n_triage_url, secrets.get(secrets.WEBHOOK_SECRET), timeout=10).ping()
         print("n8n triage:", reply)
@@ -49,9 +56,19 @@ def cmd_check(cfg: cfgmod.Config) -> int:
     return 0
 
 
+def secret_report(db: Database) -> dict | None:
+    """Names of client credential refs found in the Keychain (F04), shown by Readiness."""
+    try:
+        return {"secret_refs": secrets.presence(db.project_targets()), "checked_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())}
+    except Exception as exc:
+        log.warning("could not check credential refs: %s", exc)
+        return None
+
+
 def loop(cfg: cfgmod.Config, once: bool) -> int:
     client = connect(cfg)
-    q = Queue(SupabaseDatabase(client), cfg.runner_id)
+    db = SupabaseDatabase(client)
+    q = Queue(db, cfg.runner_id)
     q.recover_stale(cfg.stale_seconds)
     try:
         TriageClient(cfg.n8n_triage_url, secrets.get(secrets.WEBHOOK_SECRET), timeout=10).ping()
@@ -64,12 +81,12 @@ def loop(cfg: cfgmod.Config, once: bool) -> int:
     while True:
         now = time.monotonic()
         if now - last_beat >= cfg.heartbeat_seconds:
-            q.beat()
+            q.beat(output=secret_report(db))
             last_beat = now
         job = q.claim_next()
         if job:
-            handle(job, q)
-            q.beat()
+            handle(job, q, cfg.work_dir)
+            q.beat(output=secret_report(db))
             last_beat = time.monotonic()
             if once:
                 return 0
@@ -85,7 +102,7 @@ def main(argv: list[str] | None = None) -> int:
     sub = p.add_subparsers(dest="cmd", required=True)
     sub.add_parser("init-config")
     s = sub.add_parser("set-secret")
-    s.add_argument("name", help="runner-password | webhook-secret | <project>/<ref>")
+    s.add_argument("name", help="runner-password | webhook-secret | <project_id>/<ref>")
     sub.add_parser("check")
     sub.add_parser("once")
     sub.add_parser("run")

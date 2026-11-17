@@ -10,8 +10,11 @@ class Database(Protocol):
     def next_queued(self) -> dict[str, Any] | None: ...
     def update_if_status(self, run_id: str, expected: list[str], fields: dict[str, Any]) -> bool: ...
     def stale_running(self, runner_id: str, older_than_iso: str) -> list[dict[str, Any]]: ...
-    def update_heartbeat(self, runner_id: str, at_iso: str) -> bool: ...
+    def update_heartbeat(self, runner_id: str, at_iso: str, output: dict | None = None) -> bool: ...
     def get_status(self, run_id: str) -> str | None: ...
+    def get_project(self, project_id: str) -> dict[str, Any] | None: ...
+    def project_targets(self) -> list[dict[str, Any]]: ...
+    def upload(self, bucket: str, path: str, data: bytes, content_type: str) -> None: ...
 
 
 class SupabaseDatabase:
@@ -43,9 +46,12 @@ class SupabaseDatabase:
         )
         return res.data or []
 
-    def update_heartbeat(self, runner_id, at_iso):
+    def update_heartbeat(self, runner_id, at_iso, output=None):
+        fields = {"heartbeat_at": at_iso}
+        if output is not None:
+            fields["output"] = output
         res = (
-            self.c.table("runs").update({"heartbeat_at": at_iso})
+            self.c.table("runs").update(fields)
             .eq("kind", "runner_heartbeat").eq("claimed_by", runner_id).execute()
         )
         return bool(res.data)
@@ -53,3 +59,14 @@ class SupabaseDatabase:
     def get_status(self, run_id):
         res = self.c.table("runs").select("status").eq("id", run_id).limit(1).execute()
         return res.data[0]["status"] if res.data else None
+
+    def get_project(self, project_id):
+        res = self.c.table("projects").select("*").eq("id", project_id).limit(1).execute()
+        return res.data[0] if res.data else None
+
+    def project_targets(self):
+        res = self.c.table("projects").select("id, targets").neq("status", "closed").execute()
+        return res.data or []
+
+    def upload(self, bucket, path, data, content_type):
+        self.c.storage.from_(bucket).upload(path, data, {"content-type": content_type, "upsert": "true"})
