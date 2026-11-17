@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Reprova · Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/css/app.css">
+</head>
+<body>
+  <header class="top">
+    <div class="logo" data-i18n="app.name">Reprova</div>
+    <nav class="nav" aria-label="Main">
+      <a href="index.html" aria-current="page" data-i18n="nav.dashboard">Dashboard</a>
+      <a aria-disabled="true" data-i18n="nav.projects">Projects</a>
+      <a aria-disabled="true" data-i18n="nav.findings">Findings</a>
+      <a aria-disabled="true" data-i18n="nav.reports">Reports</a>
+    </nav>
+    <div class="spacer"></div>
+    <span id="runner-status" class="pill idle" aria-live="polite"><span class="dot"></span><span data-i18n="runner.unknown">Runner not set up</span></span>
+    <div class="lang" role="group" aria-label="Language">
+      <button type="button" data-lang-option="en" data-i18n="lang.en">EN</button>
+      <button type="button" data-lang-option="he" data-i18n="lang.he">עב</button>
+    </div>
+    <button class="btn btn-ghost" id="signout" type="button" data-i18n="nav.signout">Sign out</button>
+  </header>
+
+  <main>
+    <section class="hero">
+      <h1 data-i18n="dash.title">Dashboard</h1>
+      <p data-i18n="dash.skeleton"></p>
+      <p class="mono" id="last-seen" style="margin-top:8px"></p>
+    </section>
+
+    <section class="box">
+      <h2 data-i18n="dash.recent">Recent runs</h2>
+      <table>
+        <thead><tr>
+          <th data-i18n="col.project">Project</th>
+          <th data-i18n="col.kind">Kind</th>
+          <th data-i18n="col.status">Status</th>
+          <th data-i18n="col.created">Created</th>
+        </tr></thead>
+        <tbody id="runs-body"></tbody>
+      </table>
+      <p class="muted" id="runs-empty" hidden data-i18n="dash.empty">No runs yet.</p>
+    </section>
+  </main>
+
+  <script type="module" src="assets/js/dashboard.js"></script>
+</body>
+</html>

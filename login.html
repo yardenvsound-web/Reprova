@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Reprova · Sign in</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/css/app.css">
+</head>
+<body>
+  <div class="login-wrap">
+    <form class="login-card" id="login-form" novalidate>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+        <div class="logo" data-i18n="app.name">Reprova</div>
+        <div class="lang" role="group" aria-label="Language">
+          <button type="button" data-lang-option="en" data-i18n="lang.en">EN</button>
+          <button type="button" data-lang-option="he" data-i18n="lang.he">עב</button>
+        </div>
+      </div>
+      <h1 data-i18n="login.title">Sign in</h1>
+      <p class="muted" data-i18n="login.subtitle" style="margin:4px 0 20px">Managed QA for software and AI automations.</p>
+      <div class="field">
+        <label for="email" data-i18n="login.email">Email</label>
+        <input id="email" name="email" type="email" autocomplete="username" required>
+      </div>
+      <div class="field">
+        <label for="password" data-i18n="login.password">Password</label>
+        <input id="password" name="password" type="password" autocomplete="current-password" required>
+      </div>
+      <p class="form-error" id="form-error" role="alert"></p>
+      <button class="btn btn-primary" type="submit" style="width:100%;justify-content:center" data-i18n="login.submit">Sign in</button>
+    </form>
+  </div>
+  <script type="module">
+    import { initI18n, t } from './assets/js/i18n.js';
+    import { signIn } from './assets/js/auth.js';
+
+    await initI18n();
+    const form = document.getElementById('login-form');
+    const errorEl = document.getElementById('form-error');
+    if (new URLSearchParams(location.search).has('denied')) errorEl.textContent = t('login.denied');
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      errorEl.textContent = '';
+      const btn = form.querySelector('button[type=submit]');
+      btn.disabled = true;
+      const { error } = await signIn(form.email.value.trim(), form.password.value);
+      btn.disabled = false;
+      if (error) { errorEl.textContent = t('login.error'); return; }
+      location.replace('index.html');
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,7 @@
+{
+  "name": "reprova",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Reprova operator console (static site) and Vercel functions. No build step."
+}

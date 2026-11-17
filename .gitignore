@@ -1,0 +1,13 @@
+# never commit secrets or local runner state
+.env
+.env.*
+runner.json
+*.pem
+*.key
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.DS_Store
+Reprova Work/
+.fuse_hidden*
